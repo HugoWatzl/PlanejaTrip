@@ -1,0 +1,5 @@
+{
+  "name": "PlanejaTrip",
+  "description": "A comprehensive trip planning application to organize itineraries, track expenses, and collaborate with friends. Create detailed daily plans, set budgets, confirm real costs, and get AI-powered activity suggestions for your travels.",
+  "requestFramePermissions": []
+}
