@@ -8,7 +8,7 @@ interface SidebarProps {
   onClose: () => void;
   onUpdateTrip: (updatedTrip: Trip) => void;
   onBackToProfile: () => void;
-  onInvite: (trip: Trip, email: string, permission: 'EDIT' | 'VIEW_ONLY') => string | null;
+  onInvite: (trip: Trip, email: string, permission: 'EDIT' | 'VIEW_ONLY') => Promise<string | null>;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ trip, isOpen, onClose, onUpdateTrip, onBackToProfile, onInvite }) => {
@@ -16,10 +16,10 @@ const Sidebar: React.FC<SidebarProps> = ({ trip, isOpen, onClose, onUpdateTrip, 
     const [newCategory, setNewCategory] = useState('');
     const [inviteFeedback, setInviteFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-    const handleInvite = () => {
+    const handleInvite = async () => {
         setInviteFeedback(null);
         if (inviteData.email) {
-            const result = onInvite(trip, inviteData.email, inviteData.permission);
+            const result = await onInvite(trip, inviteData.email, inviteData.permission);
             if (result) {
                 setInviteFeedback({ type: 'error', message: result });
             } else {

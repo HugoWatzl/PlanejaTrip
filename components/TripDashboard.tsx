@@ -1,16 +1,19 @@
+// FIX: Add triple-slash directive to include Vite's client types, fixing errors with `import.meta.env`.
+/// <reference types="vite/client" />
+
 import React, { useState, useEffect } from 'react';
-import { Trip, Activity, User } from '../types';
-import DailyPlan from './DailyPlan';
-import ConfirmModal from './ConfirmModal';
-import Sidebar from './Sidebar';
-import FinancialView from './FinancialView';
-import { MapPinIcon, CalendarIcon, ArrowLeftIcon, SparklesIcon, MenuIcon, ChatBubbleLeftRightIcon, XCircleIcon, ChartPieIcon, GlobeIcon } from './IconComponents';
-import Logo from './Logo';
-import { getTravelSuggestionsText } from '../services/geminiService';
-import ActivityFormModal from './ActivityFormModal';
-import { GoogleGenAI } from "@google/genai";
-import type { Chat } from "@google/genai";
-import TravelAssistantChat from './TravelAssistantChat';
+import { Trip, Activity, User } from '../types.ts';
+import DailyPlan from './DailyPlan.tsx';
+import ConfirmModal from './ConfirmModal.tsx';
+import Sidebar from './Sidebar.tsx';
+import FinancialView from './FinancialView.tsx';
+import { MapPinIcon, CalendarIcon, ArrowLeftIcon, SparklesIcon, MenuIcon, ChatBubbleLeftRightIcon, XCircleIcon, ChartPieIcon, GlobeIcon, UsersIcon } from './IconComponents.tsx';
+import Logo from './Logo.tsx';
+import { getTravelSuggestionsText } from '../services/geminiService.ts';
+import ActivityFormModal from './ActivityFormModal.tsx';
+// FIX: `import type` is prohibited by the coding guidelines. Using a standard, combined import for @google/genai.
+import { GoogleGenAI, Chat } from "@google/genai";
+import TravelAssistantChat from './TravelAssistantChat.tsx';
 
 interface SuggestionsViewProps {
   tripDestination: string;
@@ -119,7 +122,7 @@ interface TripDashboardProps {
   user: User;
   updateTrip: (updatedTrip: Trip) => void;
   onBackToProfile: () => void;
-  onInvite: (trip: Trip, email: string, permission: 'EDIT' | 'VIEW_ONLY') => string | null;
+  onInvite: (trip: Trip, email: string, permission: 'EDIT' | 'VIEW_ONLY') => Promise<string | null>;
 }
 
 export interface ChatMessage {
@@ -145,8 +148,9 @@ const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, o
   const canEdit = currentUserPermission === 'EDIT' && !trip.isCompleted;
 
   useEffect(() => {
-    if (trip.destination && process.env.API_KEY) {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (trip.destination && apiKey) {
+        const ai = new GoogleGenAI({ apiKey });
         const chatInstance = ai.chats.create({
             model: 'gemini-2.5-flash',
             config: {
@@ -269,11 +273,11 @@ const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, o
                 </div>
               </div>
               <div className="flex items-center">
-                  <button onClick={() => setIsSidebarOpen(true)} disabled={!canEdit} className="ml-4 md:ml-0 md:mr-4 flex items-center space-x-2 text-brand-subtext hover:text-brand-text bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  <button onClick={() => setIsSidebarOpen(true)} disabled={!canEdit} className="flex items-center space-x-2 text-brand-subtext hover:text-brand-text bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                       <MenuIcon className="w-5 h-5" />
-                      <span className="text-sm font-semibold hidden sm:inline">Conf. da Viagem</span>
+                      <span className="text-sm font-semibold hidden sm:inline">Conf.</span>
                   </button>
-                  <div className="hidden md:flex items-center space-x-1 bg-gray-800 p-1 rounded-lg">
+                  <div className="hidden md:flex items-center space-x-1 bg-gray-800 p-1 rounded-lg ml-4">
                       <button onClick={() => { setActiveTab('planning'); setSelectedDayIndex(null); }} className={`px-3 py-1 text-sm rounded-md transition ${activeTab === 'planning' ? 'bg-brand-primary text-white' : 'text-brand-subtext'}`}>Planejamento</button>
                       <button onClick={() => setActiveTab('financials')} className={`px-3 py-1 text-sm rounded-md transition ${activeTab === 'financials' ? 'bg-brand-primary text-white' : 'text-brand-subtext'}`}>Financeiro</button>
                       <button onClick={() => setActiveTab('suggestions')} className={`px-3 py-1 text-sm rounded-md transition ${activeTab === 'suggestions' ? 'bg-brand-primary text-white' : 'text-brand-subtext'}`}>Sugestões IA</button>

@@ -1,16 +1,22 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { Activity } from '../types';
+// FIX: Add triple-slash directive to include Vite's client types, fixing errors with `import.meta.env`.
+/// <reference types="vite/client" />
 
-if (!process.env.API_KEY) {
-  console.warn("API_KEY environment variable not set. Gemini features will be disabled.");
+import { GoogleGenAI, Type } from "@google/genai";
+import { Activity } from '../types.ts';
+
+// In a Vite environment, client-side environment variables must be prefixed with VITE_
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+if (!apiKey) {
+  console.warn("VITE_GEMINI_API_KEY environment variable not set. Gemini features will be disabled.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+const ai = new GoogleGenAI({ apiKey: apiKey! });
 
 const defaultCategories = "Hospedagem, Alimentação, Lazer, Transporte, Compras, Emergência";
 
 export const getActivitySuggestions = async (destination: string): Promise<Omit<Activity, 'id' | 'isConfirmed' | 'realCost' | 'participants'>[]> => {
-  if (!process.env.API_KEY) {
+  if (!apiKey) {
     console.log("Using mock data for suggestions.");
     return Promise.resolve([
       { name: "Explore o Centro Histórico", time: "09:00", description: "Passeie pelas ruas antigas.", estimatedCost: 0, category: "Lazer" },
@@ -59,7 +65,7 @@ export const getActivitySuggestions = async (destination: string): Promise<Omit<
 
 
 export const getTravelSuggestionsText = async (destination: string): Promise<string> => {
-    if (!process.env.API_KEY) {
+    if (!apiKey) {
         return Promise.resolve(`
 * Explorar o mercado local.
 * Fazer um piquenique no parque central.

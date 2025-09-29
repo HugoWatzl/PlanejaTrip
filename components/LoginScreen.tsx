@@ -2,25 +2,44 @@ import React, { useState } from 'react';
 import Logo from './Logo';
 
 interface LoginScreenProps {
-  onLogin: (name: string, email: string, password: string) => string | null;
+  onAuth: (name: string, email: string, password: string) => Promise<void>;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onAuth }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      // O nome é obrigatório no cadastro, mas não no login. A lógica no App.tsx cuidará disso.
-      const result = onLogin(name, email, password);
-      if (result) {
-        setError(result);
-      }
-    } else {
+    if (!email || !password) {
       setError('Por favor, preencha e-mail e senha.');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await onAuth(name, email, password);
+      // On success, the onAuthStateChange listener in App.tsx will handle navigation
+    } catch (err: any) {
+      // Map common Supabase errors to user-friendly messages
+      if (err.message.includes('Invalid login credentials')) {
+        setError('E-mail ou senha inválidos.');
+      } else if (err.message.includes('already be registered')) {
+        setError('Este e-mail já está cadastrado. Tente fazer login.');
+      } else if (err.message.includes('Password should be at least 6 characters')) {
+        setError('A senha deve ter pelo menos 6 caracteres.');
+      }
+      else {
+        setError('Ocorreu um erro. Verifique os dados e tente novamente.');
+      }
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -33,7 +52,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   <h1 className="text-2xl font-bold text-brand-text">Bem vindo!</h1>
                   <p className="text-brand-subtext">Faça login ou cadastre-se para continuar</p>
               </div>
-              <form className="space-y-4" onSubmit={handleLogin}>
+              <form className="space-y-4" onSubmit={handleAuthSubmit}>
                 <div>
                   <label htmlFor="name" className="sr-only">Nome</label>
                   <input
@@ -76,7 +95,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   />
                 </div>
 
-                {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+                {error && <p className="text-red-400 text-sm text-center bg-red-900/30 p-3 rounded-lg">{error}</p>}
                 
                 <p className="text-xs text-center text-brand-subtext">
                   Para entrar, preencha e-mail e senha. Para se cadastrar, preencha todos os campos.
@@ -85,9 +104,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <div>
                   <button
                     type="submit"
-                    className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark focus:ring-brand-primary transition-colors"
+                    disabled={isLoading}
+                    className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark focus:ring-brand-primary transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
                   >
-                    Entrar / Cadastrar-se
+                    {isLoading ? 'Processando...' : 'Entrar / Cadastrar-se'}
                   </button>
                 </div>
               </form>

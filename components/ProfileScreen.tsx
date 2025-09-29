@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Trip, User, Invite } from '../types';
-import Logo from './Logo';
-import { LogoutIcon, PlusCircleIcon, UserCircleIcon, AtSymbolIcon, CheckCircleIcon, PaperAirplaneIcon, XCircleIcon } from './IconComponents';
-import TripSummaryModal from './TripSummaryModal';
-import ConcludeTripModal from './ConcludeTripModal';
+import { Trip, User, Invite } from '../types.ts';
+import Logo from './Logo.tsx';
+import { LogoutIcon, PlusCircleIcon, UserCircleIcon, AtSymbolIcon, CheckCircleIcon, PaperAirplaneIcon, XCircleIcon } from './IconComponents.tsx';
+import TripSummaryModal from './TripSummaryModal.tsx';
+import ConcludeTripModal from './ConcludeTripModal.tsx';
+import { supabase } from '../services/supabase.ts';
 
 interface InvitesViewProps {
   pendingInvites: Invite[];
@@ -112,22 +113,52 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, trips, invites, onL
   const pendingInvites = invites.filter(inv => inv.status === 'PENDING');
   const rejectedNotifications = invites.filter(inv => inv.status === 'REJECTED');
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setEditError('');
-    // Senha
-    if (passwordData.newPassword) {
-        if (passwordData.currentPassword !== user.password) {
-            setEditError('A senha atual está incorreta.');
+
+    const nameChanged = user.name !== userData.name;
+    const passwordChanged = !!passwordData.newPassword;
+
+    if (!nameChanged && !passwordChanged) {
+        setIsEditing(false);
+        return;
+    }
+    
+    const userUpdatePayload: User = { ...user, name: userData.name };
+
+    // Lógica da Senha
+    if (passwordChanged) {
+        if (!passwordData.currentPassword) {
+            setEditError('Por favor, informe sua senha atual para alterá-la.');
+            return;
+        }
+        if (passwordData.newPassword.length < 6) {
+            setEditError('A nova senha deve ter pelo menos 6 caracteres.');
             return;
         }
         if (passwordData.newPassword !== passwordData.confirmPassword) {
             setEditError('As novas senhas não coincidem.');
             return;
         }
-        onUpdateUser({ ...user, ...userData, password: passwordData.newPassword });
-    } else { // Apenas nome/email
-        onUpdateUser({ ...user, ...userData });
+
+        // Re-autenticar para verificar a senha atual
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password: passwordData.currentPassword,
+        });
+
+        if (signInError) {
+            setEditError('A senha atual está incorreta.');
+            return;
+        }
+        
+        userUpdatePayload.password = passwordData.newPassword;
+    } else if (passwordData.currentPassword || passwordData.confirmPassword) {
+        setEditError('Para alterar a senha, preencha todos os campos de senha.');
+        return;
     }
+    
+    await onUpdateUser(userUpdatePayload);
     
     setIsEditing(false);
     setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: ''});
