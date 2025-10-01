@@ -23,104 +23,76 @@ View your app in AI Studio: https://ai.studio/apps/drive/1WAKIXWHwyGQCwhxtk4P4PW
 
 
 
-# Documento de Visão: PlanejaTrip
+# **Documentação Inicial – Projeto PlanejaTrip**
 
-**Versão:** 1.0
-**Data:** 24 de Julho de 2024
+## **1. Identificação do Projeto**
+
+* **Nome do Projeto/Solução:** PlanejaTrip
+* **Integrantes do Grupo:** *( Breno Chaves, Hugo, Lucca, Arthur, Vitor )*
 
 ---
 
-## 1. Visão Geral
+## **2. Motivação**
 
-O **PlanejaTrip** é uma aplicação web moderna e colaborativa, projetada para simplificar e centralizar o planejamento de viagens. A plataforma permite que usuários, sozinhos ou em grupo, organizem todos os aspectos de uma viagem, desde o roteiro diário e atividades até o controle financeiro detalhado. Com uma interface intuitiva e a integração de inteligência artificial para sugestões, o PlanejaTrip visa transformar a complexidade do planejamento em uma experiência agradável e eficiente.
+A escolha pelo tema surgiu a partir da **necessidade comum de organizar viagens de forma prática e colaborativa**. Muitas vezes, grupos de amigos, famílias ou até mesmo viajantes individuais enfrentam dificuldades em alinhar roteiros, dividir despesas e manter o controle financeiro de forma clara e acessível.
 
-## 2. Propósito e Problema
+A relevância do projeto é notável em diferentes dimensões:
 
-O planejamento de viagens, especialmente em grupo, é frequentemente fragmentado. Informações são espalhadas por planilhas, aplicativos de mensagens, e-mails e documentos de texto. Isso leva a desorganização, falhas de comunicação e dificuldade no controle de custos.
+* **Prática:** reduz a complexidade de organizar viagens, centralizando todas as informações em uma única plataforma.
+* **Acadêmica:** promove a aplicação de conceitos de desenvolvimento web, inteligência artificial e usabilidade.
+* **Social:** facilita o planejamento coletivo, fortalecendo a colaboração entre grupos de pessoas que viajam juntas.
 
-O PlanejaTrip resolve esse problema ao oferecer uma **fonte única de verdade**, onde todos os detalhes da viagem são consolidados e acessíveis em tempo real para todos os participantes.
+---
 
-## 3. Público-Alvo
+## **3. Problema**
 
-*   **Grupos de Amigos e Famílias:** O principal público, que precisa de uma ferramenta para coordenar planos e dividir despesas de forma transparente.
-*   **Viajantes Solo Organizados:** Indivíduos que desejam ter um controle detalhado sobre seus roteiros e orçamentos.
-*   **Casais:** Para planejar viagens românticas ou luas de mel sem o estresse da desorganização.
+Atualmente, o planejamento de viagens é fragmentado e, muitas vezes, depende de diversas ferramentas separadas (planilhas, aplicativos de anotações, grupos de mensagens). Isso gera **falta de organização, retrabalho e dificuldade na divisão de tarefas e despesas**.
 
-## 4. Principais Funcionalidades (Versão Atual)
+Os principais afetados por esse problema são:
 
-### 4.1. Gestão de Usuários e Autenticação
-- **Login e Cadastro:** Sistema unificado onde o usuário pode se cadastrar (informando nome, e-mail e senha) ou fazer login (com e-mail e senha).
-- **Persistência de Sessão:** O usuário logado é mantido através do `localStorage` para uma experiência contínua.
-- **Perfil de Usuário:** Tela de perfil onde o usuário pode visualizar e editar suas informações.
+* **Grupos de amigos e famílias**, que precisam coordenar múltiplas atividades e custos.
+* **Viajantes solo**, que desejam maior controle sobre seus roteiros.
+* **Casais**, que buscam evitar estresse no planejamento de viagens especiais.
 
-### 4.2. Gestão de Viagens
-- **Criação de Viagens:** Um formulário intuitivo permite criar novas viagens, definindo nome, destino, datas de início e término, e orçamento total.
-- **Listagem de Viagens:** O perfil do usuário exibe as viagens ativas e as já concluídas, permitindo fácil acesso.
-- **Dashboard da Viagem:** Uma visão centralizada para cada viagem, servindo como ponto de partida para o planejamento.
+---
 
-### 4.3. Planejamento de Roteiro Diário
-- **Visualização por Dias:** O sistema gera automaticamente um painel para cada dia da viagem.
-- **Gestão de Atividades:** Dentro de cada dia, o usuário pode:
-    - Adicionar, editar e excluir atividades.
-    - Definir nome, horário, descrição, custo estimado e categoria.
-- **Sugestões com IA:** Integração com a API Gemini para gerar sugestões de atividades personalizadas para o destino da viagem.
+## **4. Solução Proposta**
 
-### 4.4. Controle Financeiro
-- **Orçamento Total:** Definição de um orçamento geral para a viagem.
-- **Confirmação de Gastos:** Usuários podem "confirmar" uma atividade, informando o custo real gasto.
-- **Dashboard Financeiro:** Uma visão detalhada dos gastos:
-    - Resumo: Orçamento vs. Gasto Total vs. Saldo.
-    - Gráfico de Pizza: Distribuição de gastos por categoria (Alimentação, Lazer, etc.).
-    - Divisão por Viajante: Análise de quanto cada participante gastou individualmente.
+O **PlanejaTrip** é uma aplicação web moderna e colaborativa que centraliza todas as etapas do planejamento de viagens.
 
-### 4.5. Colaboração em Tempo Real (Simulada)
-- **Sistema de Convites:** O dono da viagem pode convidar outros usuários por e-mail.
-- **Gestão de Permissões:** Ao convidar, é possível definir se o participante pode "Editar" ou "Apenas Visualizar".
-- **Notificações:** O usuário convidado recebe uma notificação para aceitar ou recusar o convite.
-- **Acesso Compartilhado:** Uma vez aceito, a viagem aparece no perfil do convidado, e as alterações são refletidas para todos (atualmente simulado via `localStorage`).
+### Funcionamento resumido:
 
-### 4.6. Assistente de Viagem com IA
-- **Chat Inteligente:** Um assistente de viagem flutuante, alimentado pela API Gemini, que pode responder a perguntas sobre o destino, dar dicas e ajudar no planejamento em linguagem natural.
-- **Respostas em Streaming:** As respostas do assistente são exibidas em tempo real, melhorando a experiência do usuário.
+* Gestão de usuários e autenticação.
+* Criação e organização de viagens.
+* Roteiro diário de atividades.
+* Controle financeiro integrado.
+* Colaboração em tempo real (simulada).
+* Assistente de viagem baseado em IA.
 
-## 5. Arquitetura e Pilha Tecnológica
+### Uso de IA:
 
-- **Frontend:**
-    - **Framework:** React 19
-    - **Linguagem:** TypeScript
-    - **Estilização:** Tailwind CSS para uma UI moderna e responsiva.
-    - **Estado Global:** Gerenciamento de estado local através de `useState` e `useEffect`, com passagem de props.
-- **Inteligência Artificial:**
-    - **API:** Google Gemini (`gemini-2.5-flash`) para geração de texto, sugestões de atividades e funcionalidade de chat.
-- **Persistência de Dados (Protótipo):**
-    - **Armazenamento:** `localStorage` do navegador é usado para simular um banco de dados, armazenando usuários, viagens e convites.
+A inteligência artificial é aplicada para:
 
-## 6. Fluxos de Usuário Essenciais
+* **Sugestões automáticas** de roteiros, atividades e otimização de custos.
+* **Apoio ao usuário** na organização financeira e na criação de itinerários personalizados.
 
-1.  **Novo Usuário:**
-    - Acessa a tela de login.
-    - Preenche nome, e-mail e senha para se cadastrar.
-    - É redirecionado para a tela de perfil.
-    - Clica em "Nova Viagem", preenche o formulário e cria sua primeira viagem.
-    - É levado ao dashboard da viagem para começar a planejar.
+### Ferramentas utilizadas:
 
-2.  **Planejamento em Grupo:**
-    - O dono da viagem abre as configurações e convida um amigo por e-mail.
-    - O amigo se cadastra/loga na plataforma com o mesmo e-mail.
-    - Na sua tela de perfil, o amigo vê o convite e o aceita.
-    - A viagem agora aparece em sua lista, e ele pode acessá-la e colaborar.
+* **Frontend:** React 19, TypeScript, Tailwind CSS.
+* **IA:** Google Gemini (gemini-2.5-flash).
+* **Persistência de Dados:** localStorage do navegador.
 
-## 7. Evolução Futura (Próximos Passos)
+---
 
-Para transformar o PlanejaTrip de um protótipo funcional em um produto de produção, os seguintes passos são recomendados:
+## **5. Benefícios Esperados**
 
-- **Backend e Banco de Dados Real:**
-    - **Substituir `localStorage`:** Migrar a persistência de dados para uma solução de backend como **Firebase (Firestore)** ou **Supabase**.
-    - **Autenticação Real:** Utilizar os serviços de autenticação dessas plataformas para gerenciar usuários de forma segura.
-- **Colaboração em Tempo Real:** Implementar WebSockets (ou as funcionalidades de tempo real do Firestore/Supabase) para que as alterações feitas por um usuário apareçam instantaneamente para todos os outros.
-- **Funcionalidades Adicionais:**
-    - **Upload de Documentos:** Permitir que os usuários anexem passagens, reservas de hotel e outros documentos.
-    - **Integração com Mapas:** Visualizar atividades e rotas em um mapa interativo.
-    - **Notificações Push:** Enviar lembretes sobre próximas atividades ou atualizações no planejamento.
-- **Aplicativo Móvel:** Desenvolver versões para iOS e Android usando React Native para compartilhar a base de código.
+Com a implementação do PlanejaTrip, espera-se alcançar:
+
+* **Economia de tempo** no planejamento de viagens.
+* **Redução de custos**, com melhor divisão e organização financeira.
+* **Maior acessibilidade**, permitindo que qualquer pessoa planeje viagens sem necessidade de múltiplos aplicativos.
+* **Inovação**, ao integrar inteligência artificial ao planejamento turístico.
+* **Apoio em tomadas de decisão**, sugerindo atividades, destinos e formas de otimizar o orçamento.
+* **Colaboração transparente**, permitindo que grupos planejem juntos de forma clara e organizada.
+
 
