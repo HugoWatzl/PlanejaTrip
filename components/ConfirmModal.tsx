@@ -4,11 +4,12 @@ import { Activity } from '../types';
 interface ConfirmModalProps {
   activity: Activity;
   participants: string[];
+  currencySymbol: string;
   onClose: () => void;
   onConfirm: (activityId: string, realCost: number, confirmedParticipants: string[]) => void;
 }
 
-const ConfirmModal: React.FC<ConfirmModalProps> = ({ activity, participants, onClose, onConfirm }) => {
+const ConfirmModal: React.FC<ConfirmModalProps> = ({ activity, participants, currencySymbol, onClose, onConfirm }) => {
   const [usePlannedValue, setUsePlannedValue] = useState(true);
   const [realCost, setRealCost] = useState(activity.estimatedCost.toString());
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>(participants);
@@ -47,7 +48,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ activity, participants, onC
 
         <div className="bg-gray-800 p-4 rounded-lg mb-6">
           <p className="text-sm text-brand-subtext">Valor planejado:</p>
-          <p className="text-2xl font-semibold">R$ {activity.estimatedCost.toFixed(2)}</p>
+          <p className="text-2xl font-semibold">{currencySymbol} {activity.estimatedCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
 
         <div className="space-y-4 mb-6">
@@ -63,7 +64,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ activity, participants, onC
 
         {!usePlannedValue && (
           <div className="mb-6">
-            <label htmlFor="realCost" className="block text-sm font-medium mb-1">Valor Real Gasto (R$)</label>
+            <label htmlFor="realCost" className="block text-sm font-medium mb-1">Valor Real Gasto ({currencySymbol})</label>
             <input type="number" id="realCost" value={realCost} onChange={(e) => setRealCost(e.target.value)} className="mt-1 block w-full border-gray-600 bg-gray-700 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm p-3" placeholder="Ex: 115.50" />
           </div>
         )}

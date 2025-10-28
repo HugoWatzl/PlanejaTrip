@@ -4,11 +4,16 @@ import { XCircleIcon, CalendarIcon, MapPinIcon } from './IconComponents';
 import PieChart from './PieChart';
 
 const COLORS = ['#00A8FF', '#00E0C7', '#FACC15', '#FF7A00', '#D600FF', '#00FF4C'];
+const currencySymbols = {
+    BRL: 'R$',
+    USD: '$',
+    EUR: '€',
+};
 
 const FinancialSummary: React.FC<{ trip: Trip }> = ({ trip }) => {
     const [selectedTraveler, setSelectedTraveler] = useState<string>('all');
     
-    const currencySymbol = 'R$';
+    const currencySymbol = currencySymbols[trip.currency];
 
     const confirmedActivities = useMemo(() => trip.days.flatMap(d => d.activities).filter(a => a.isConfirmed), [trip.days]);
 
@@ -18,17 +23,19 @@ const FinancialSummary: React.FC<{ trip: Trip }> = ({ trip }) => {
             activitiesToConsider = confirmedActivities.filter(a => a.participants.includes(selectedTraveler));
         }
 
+        // Accumulate costs by category, handling potential undefined realCost and division by zero.
         const data = activitiesToConsider.reduce((acc, activity) => {
+            // FIX: The 'realCost' property on an activity can be undefined.
+            // We must provide a fallback value (e.g., 0) to ensure arithmetic operations are safe.
             let cost = activity.realCost ?? 0;
             
-            if (selectedTraveler !== 'all' && activity.participants.length > 0) {
-                cost = cost / activity.participants.length;
+            if (selectedTraveler !== 'all') {
+                const participantCount = activity.participants.length || 1;
+                cost = cost / participantCount;
             }
             
             acc[activity.category] = (acc[activity.category] || 0) + cost;
             return acc;
-        // FIX: Explicitly cast the initial value for `reduce` to ensure `data` has the correct type (`Record<string, number>`),
-        // which resolves an issue where `value` was not being treated as a number in the sort function.
         }, {} as Record<string, number>);
 
         return Object.entries(data).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
@@ -64,12 +71,12 @@ const FinancialSummary: React.FC<{ trip: Trip }> = ({ trip }) => {
                                         <span className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
                                         <span>{item.name}</span>
                                     </div>
-                                    <span className="font-semibold">{currencySymbol} {item.value.toFixed(2)}</span>
+                                    <span className="font-semibold">{currencySymbol} {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </li>
                             ))}
                             <li className="flex items-center justify-between text-base font-bold border-t border-gray-600 pt-2 mt-2">
                                 <span>Total</span>
-                                <span>{currencySymbol} {totalSpentFiltered.toFixed(2)}</span>
+                                <span>{currencySymbol} {totalSpentFiltered.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </li>
                         </ul>
                     </div>
@@ -93,6 +100,7 @@ const TripSummaryModal: React.FC<TripSummaryModalProps> = ({ trip, onClose }) =>
   const [activeTab, setActiveTab] = useState<'itinerary' | 'financials'>('itinerary');
   const startDate = new Date(trip.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' });
   const endDate = new Date(trip.endDate).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' });
+  const currencySymbol = currencySymbols[trip.currency];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4">
@@ -139,7 +147,7 @@ const TripSummaryModal: React.FC<TripSummaryModalProps> = ({ trip, onClose }) =>
                             <div key={activity.id} className="p-3 bg-gray-800 rounded-lg">
                             <div className="flex justify-between items-start">
                                 <p className="font-semibold">{activity.name} ({activity.time})</p>
-                                <p className="text-sm font-medium text-brand-subtext">R$ {activity.estimatedCost.toFixed(2)}</p>
+                                <p className="text-sm font-medium text-brand-subtext">{currencySymbol} {activity.estimatedCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
                             {activity.description && <p className="text-sm text-gray-400 mt-1">{activity.description}</p>}
                             </div>

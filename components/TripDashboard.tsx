@@ -1,26 +1,32 @@
-// FIX: Add triple-slash directive to include Vite's client types, fixing errors with `import.meta.env`.
-/// <reference types="vite/client" />
-
 import React, { useState, useEffect } from 'react';
-import { Trip, Activity, User } from '../types.ts';
-import DailyPlan from './DailyPlan.tsx';
-import ConfirmModal from './ConfirmModal.tsx';
-import Sidebar from './Sidebar.tsx';
-import FinancialView from './FinancialView.tsx';
-import { MapPinIcon, CalendarIcon, ArrowLeftIcon, SparklesIcon, MenuIcon, ChatBubbleLeftRightIcon, XCircleIcon, ChartPieIcon, GlobeIcon, UsersIcon } from './IconComponents.tsx';
-import Logo from './Logo.tsx';
-import { getTravelSuggestionsText } from '../services/geminiService.ts';
-import ActivityFormModal from './ActivityFormModal.tsx';
-// FIX: `import type` is prohibited by the coding guidelines. Using a standard, combined import for @google/genai.
-import { GoogleGenAI, Chat } from "@google/genai";
-import TravelAssistantChat from './TravelAssistantChat.tsx';
+import { Trip, Activity, User } from '../types';
+import DailyPlan from './DailyPlan';
+import ConfirmModal from './ConfirmModal';
+import SettingsView from './Sidebar';
+import FinancialView from './FinancialView';
+import { MapPinIcon, CalendarIcon, ArrowLeftIcon, SparklesIcon, MenuIcon, ChatBubbleLeftRightIcon, XCircleIcon, ChartPieIcon, GlobeIcon, UsersIcon, Cog6ToothIcon } from './IconComponents';
+import Logo from './Logo';
+import { getTravelSuggestionsText } from '../services/geminiService';
+import ActivityFormModal from './ActivityFormModal';
+import { GoogleGenAI } from "@google/genai";
+import type { Chat } from "@google/genai";
+import TravelAssistantChat from './TravelAssistantChat';
 
-interface SuggestionsViewProps {
-  tripDestination: string;
+interface SuggestionsPageProps {
+  trip: Trip;
 }
+
+const currencySymbols = {
+    BRL: 'R$',
+    USD: '$',
+    EUR: '€',
+};
 
 const FormattedContent: React.FC<{ content: string }> = ({ content }) => {
     const processedContent = content
+        // Handle links first to allow for nested formatting like **[link]**
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-brand-primary hover:underline">$1</a>')
+        // Then handle other formatting
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/__(.*?)__/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -40,17 +46,34 @@ const FormattedContent: React.FC<{ content: string }> = ({ content }) => {
 };
 
 
-const SuggestionsView: React.FC<SuggestionsViewProps> = ({ tripDestination }) => {
+const SuggestionsPage: React.FC<SuggestionsPageProps> = ({ trip }) => {
     const [suggestions, setSuggestions] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+
+    const travelLinks = [
+        { name: 'Civitatis', url: 'https://www.civitatis.com/br/', description: 'Excursões, visitas guiadas e atividades.' },
+        { name: 'GetYourGuide', url: 'https://www.getyourguide.com.br', description: 'Tours e atrações em destinos pelo mundo.' },
+        { name: 'TripAdvisor', url: 'https://www.tripadvisor.com.br', description: 'Avaliações e recomendações de viajantes.' },
+        { name: 'Booking.com', url: 'https://www.booking.com', description: 'Encontre ofertas de hotéis e acomodações.' },
+        { name: 'Trivago', url: 'https://www.trivago.com.br', description: 'Compare preços de hotéis de vários sites.' },
+        { name: 'Rentalcars.com', url: 'https://www.rentalcars.com', description: 'Compare e alugue carros com facilidade.' }
+    ];
+
+    const capitalizeDestination = (destination: string): string => {
+        if (!destination) return '';
+        return destination
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+    };
 
     useEffect(() => {
         const fetchSuggestions = async () => {
             setIsLoading(true);
             setError(null);
             try {
-                const result = await getTravelSuggestionsText(tripDestination);
+                const result = await getTravelSuggestionsText(trip);
                 setSuggestions(result);
             } catch (err) {
                 setError("Não foi possível carregar as sugestões. Tente novamente.");
@@ -61,68 +84,55 @@ const SuggestionsView: React.FC<SuggestionsViewProps> = ({ tripDestination }) =>
         };
 
         fetchSuggestions();
-    }, [tripDestination]);
+    }, [trip]);
 
     return (
-        <div className="bg-brand-light rounded-xl shadow-lg p-8">
-            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-700">
-                <SparklesIcon className="w-8 h-8 text-brand-accent" />
-                <h2 className="text-3xl font-bold">Sugestões da IA para {tripDestination}</h2>
+        <div className="space-y-8">
+            <div className="bg-brand-light rounded-xl shadow-lg p-8">
+                <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-700">
+                    <SparklesIcon className="w-8 h-8 text-brand-accent" />
+                    <h2 className="text-3xl font-bold">Sugestões para {capitalizeDestination(trip.destination)}</h2>
+                </div>
+                {isLoading && (
+                    <div className="flex flex-col items-center justify-center text-center py-20">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mb-4"></div>
+                        <p className="text-brand-subtext">Gerando recomendações personalizadas para você...</p>
+                    </div>
+                )}
+                {error && <p className="text-center text-red-400 py-20">{error}</p>}
+                {!isLoading && !error && (
+                    <div className="space-y-4">
+                        <FormattedContent content={suggestions} />
+                    </div>
+                )}
             </div>
-            {isLoading && (
-                <div className="flex flex-col items-center justify-center text-center py-20">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mb-4"></div>
-                    <p className="text-brand-subtext">Gerando recomendações personalizadas para você...</p>
+             <div className="bg-brand-light rounded-xl shadow-lg p-8">
+                <h2 className="text-3xl font-bold mb-6 pb-4 border-b border-gray-700">Links Úteis para a Viagem</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {travelLinks.map(link => (
+                        <a 
+                            key={link.name} 
+                            href={link.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="block bg-gray-800 p-6 rounded-lg hover:bg-gray-700 hover:shadow-brand-primary/20 transform hover:-translate-y-1 transition-all duration-300"
+                        >
+                            <h3 className="text-xl font-bold text-brand-primary">{link.name}</h3>
+                            <p className="text-brand-subtext mt-2">{link.description}</p>
+                        </a>
+                    ))}
                 </div>
-            )}
-            {error && <p className="text-center text-red-400 py-20">{error}</p>}
-            {!isLoading && !error && (
-                <div className="space-y-4">
-                    <FormattedContent content={suggestions} />
-                </div>
-            )}
-        </div>
-    );
-};
-
-const LinksView: React.FC = () => {
-    const travelLinks = [
-        { name: 'Skyscanner', url: 'https://www.skyscanner.com.br', description: 'Pesquisa de voos, hotéis e aluguel de carros.' },
-        { name: 'Decolar', url: 'https://www.decolar.com', description: 'Pacotes de viagens, passagens e hospedagens.' },
-        { name: 'Civitatis', url: 'https://www.civitatis.com/br/', description: 'Excursões, visitas guiadas e atividades turísticas.' },
-        { name: 'GetYourGuide', url: 'https://www.getyourguide.com.br', description: 'Tours e atrações em destinos pelo mundo.' },
-        { name: 'TripAdvisor', url: 'https://www.tripadvisor.com.br', description: 'Avaliações e recomendações de viajantes.' },
-        { name: 'Trivago', url: 'https://www.trivago.com.br', description: 'Compare preços de hotéis de vários sites.' }
-    ];
-
-    return (
-         <div className="bg-brand-light rounded-xl shadow-lg p-8">
-            <h2 className="text-3xl font-bold mb-6 pb-4 border-b border-gray-700">Links Úteis</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {travelLinks.map(link => (
-                    <a 
-                        key={link.name} 
-                        href={link.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="block bg-gray-800 p-6 rounded-lg hover:bg-gray-700 hover:shadow-brand-primary/20 transform hover:-translate-y-1 transition-all duration-300"
-                    >
-                        <h3 className="text-xl font-bold text-brand-primary">{link.name}</h3>
-                        <p className="text-brand-subtext mt-2">{link.description}</p>
-                    </a>
-                ))}
             </div>
         </div>
     );
 };
-
 
 interface TripDashboardProps {
   trip: Trip;
   user: User;
   updateTrip: (updatedTrip: Trip) => void;
   onBackToProfile: () => void;
-  onInvite: (trip: Trip, email: string, permission: 'EDIT' | 'VIEW_ONLY') => Promise<string | null>;
+  onInvite: (trip: Trip, email: string, permission: 'EDIT' | 'VIEW_ONLY') => string | null;
 }
 
 export interface ChatMessage {
@@ -130,11 +140,10 @@ export interface ChatMessage {
     text: string;
 }
 
-type Tab = 'planning' | 'financials' | 'suggestions' | 'links';
+type Tab = 'planning' | 'financials' | 'suggestions' | 'settings';
 
 const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, onBackToProfile, onInvite }) => {
   const [activityToConfirm, setActivityToConfirm] = useState<Activity | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('planning');
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [editingState, setEditingState] = useState<{ dayIndex: number; activity: Activity | null } | null>(null);
@@ -148,19 +157,38 @@ const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, o
   const canEdit = currentUserPermission === 'EDIT' && !trip.isCompleted;
 
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (trip.destination && apiKey) {
-        const ai = new GoogleGenAI({ apiKey });
+    if (trip.destination && process.env.API_KEY) {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+        const systemInstruction = `
+        Você é o "PlanejaTrip Assistente", um assistente de viagens expert para uma viagem a ${trip.destination}.
+        Sua missão é criar roteiros e dar sugestões que se alinhem perfeitamente com as preferências, orçamento e estilo do usuário.
+        
+        **Contexto da Viagem Atual:**
+        - Destino: ${trip.destination}
+        - Período: ${new Date(trip.startDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'})} a ${new Date(trip.endDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
+        - Orçamento Total: ${trip.currency} ${trip.budget.toFixed(2)}
+        - Estilo do Orçamento: ${trip.preferences.budgetStyle}
+        - O que os viajantes GOSTAM: ${trip.preferences.likes.join(', ') || 'Nenhum especificado'}
+        - O que os viajantes NÃO GOSTAM: ${trip.preferences.dislikes.join(', ') || 'Nenhum especificado'}
+        
+        **REGRAS IMPORTANTES:**
+        1. NUNCA sugira algo que esteja na lista de "NÃO GOSTAM".
+        2. SUAS SUGESTÕES devem ser consistentes com o "Estilo do Orçamento".
+        3. SEJA CONCISO e direto ao ponto.
+        4. USE MARKDOWN para formatar suas respostas com títulos, negrito e listas quando apropriado.
+        `;
+
         const chatInstance = ai.chats.create({
             model: 'gemini-2.5-flash',
             config: {
-                systemInstruction: `Você é um assistente de viagens prestativo para uma viagem a ${trip.destination}. Seu nome é PlanejaTrip Assistente. Forneça informações concisas e úteis, recomendações e responda a perguntas sobre a viagem. Use markdown para formatar suas respostas com títulos, negrito e listas quando apropriado.`,
+                systemInstruction,
             },
         });
         setChat(chatInstance);
         setChatMessages([]);
     }
-  }, [trip.id, trip.destination]);
+  }, [trip.id, trip.destination, trip.budget, trip.startDate, trip.endDate, JSON.stringify(trip.preferences), trip.currency]);
 
   const handleSendMessage = async (prompt: string) => {
     if (!chat || isAiThinking) return;
@@ -255,7 +283,6 @@ const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, o
 
   return (
     <div className="flex h-screen bg-brand-dark text-brand-text font-sans">
-      <Sidebar trip={trip} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onUpdateTrip={updateTrip} onBackToProfile={onBackToProfile} onInvite={onInvite} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-brand-light shadow-md z-10">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -273,15 +300,11 @@ const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, o
                 </div>
               </div>
               <div className="flex items-center">
-                  <button onClick={() => setIsSidebarOpen(true)} disabled={!canEdit} className="flex items-center space-x-2 text-brand-subtext hover:text-brand-text bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      <MenuIcon className="w-5 h-5" />
-                      <span className="text-sm font-semibold hidden sm:inline">Conf.</span>
-                  </button>
                   <div className="hidden md:flex items-center space-x-1 bg-gray-800 p-1 rounded-lg ml-4">
                       <button onClick={() => { setActiveTab('planning'); setSelectedDayIndex(null); }} className={`px-3 py-1 text-sm rounded-md transition ${activeTab === 'planning' ? 'bg-brand-primary text-white' : 'text-brand-subtext'}`}>Planejamento</button>
                       <button onClick={() => setActiveTab('financials')} className={`px-3 py-1 text-sm rounded-md transition ${activeTab === 'financials' ? 'bg-brand-primary text-white' : 'text-brand-subtext'}`}>Financeiro</button>
-                      <button onClick={() => setActiveTab('suggestions')} className={`px-3 py-1 text-sm rounded-md transition ${activeTab === 'suggestions' ? 'bg-brand-primary text-white' : 'text-brand-subtext'}`}>Sugestões IA</button>
-                      <button onClick={() => setActiveTab('links')} className={`px-3 py-1 text-sm rounded-md transition ${activeTab === 'links' ? 'bg-brand-primary text-white' : 'text-brand-subtext'}`}>Links</button>
+                      <button onClick={() => setActiveTab('suggestions')} className={`px-3 py-1 text-sm rounded-md transition ${activeTab === 'suggestions' ? 'bg-brand-primary text-white' : 'text-brand-subtext'}`}>Sugestões</button>
+                      <button onClick={() => setActiveTab('settings')} className={`px-3 py-1 text-sm rounded-md transition ${activeTab === 'settings' ? 'bg-brand-primary text-white' : 'text-brand-subtext'}`}>Configurações da viagem</button>
                   </div>
                   <Logo className="ml-6 hidden lg:flex" />
               </div>
@@ -307,9 +330,8 @@ const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, o
               ) : (
                 <DailyPlan
                   day={trip.days[selectedDayIndex]}
+                  trip={trip}
                   canEdit={canEdit}
-                  tripDestination={trip.destination}
-                  categories={trip.categories}
                   updateActivity={handleUpdateActivity}
                   deleteActivity={handleDeleteActivity}
                   onConfirmClick={setActivityToConfirm}
@@ -321,8 +343,8 @@ const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, o
             </div>
           )}
           {activeTab === 'financials' && <FinancialView trip={trip} onUpdateBudget={handleUpdateBudget} canEdit={canEdit} />}
-          {activeTab === 'suggestions' && <SuggestionsView tripDestination={trip.destination} />}
-          {activeTab === 'links' && <LinksView />}
+          {activeTab === 'suggestions' && <SuggestionsPage trip={trip} />}
+          {activeTab === 'settings' && <SettingsView trip={trip} user={user} onUpdateTrip={updateTrip} onInvite={onInvite} />}
         </main>
         
         {/* Mobile Bottom Navigation */}
@@ -339,9 +361,9 @@ const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, o
                 <SparklesIcon className="w-6 h-6" />
                 <span className="text-xs font-medium">Sugestões</span>
             </button>
-             <button onClick={() => setActiveTab('links')} className={`flex flex-col items-center justify-center w-1/4 transition-colors ${activeTab === 'links' ? 'text-brand-primary' : 'text-brand-subtext'}`}>
-                <GlobeIcon className="w-6 h-6" />
-                <span className="text-xs font-medium">Links</span>
+             <button onClick={() => setActiveTab('settings')} className={`flex flex-col items-center justify-center w-1/4 transition-colors ${activeTab === 'settings' ? 'text-brand-primary' : 'text-brand-subtext'}`}>
+                <Cog6ToothIcon className="w-6 h-6" />
+                <span className="text-xs font-medium">Conf.</span>
             </button>
         </div>
 
@@ -365,6 +387,7 @@ const TripDashboard: React.FC<TripDashboardProps> = ({ trip, user, updateTrip, o
         <ConfirmModal
           activity={activityToConfirm}
           participants={trip.participants.map(p => p.name)}
+          currencySymbol={currencySymbols[trip.currency]}
           onClose={() => setActivityToConfirm(null)}
           onConfirm={handleConfirmActivity}
         />

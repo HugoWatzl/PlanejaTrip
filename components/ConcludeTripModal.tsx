@@ -15,8 +15,8 @@ const ConcludeTripModal: React.FC<ConcludeTripModalProps> = ({ tripName, onConfi
           Você tem certeza que deseja concluir a viagem <strong className="text-brand-primary">{tripName}</strong>?
         </p>
         <div className="bg-yellow-900/40 border border-yellow-600/50 text-yellow-300 text-sm p-4 rounded-lg mb-8">
-            <p className="font-bold mb-2">Atenção: Esta ação é irreversível.</p>
-            <p>O roteiro detalhado e os dados financeiros serão removidos para arquivamento. Apenas o resumo da viagem será mantido no seu histórico.</p>
+            <p className="font-bold mb-2">Atenção: Esta ação não pode ser desfeita.</p>
+            <p>A viagem será movida para a seção "Viagens Realizadas" e não poderá mais ser editada. Todos os dados, como roteiro e finanças, serão mantidos para consulta.</p>
         </div>
 
         <div className="flex justify-end space-x-4">

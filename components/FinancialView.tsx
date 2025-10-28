@@ -37,13 +37,13 @@ const FinancialView: React.FC<FinancialViewProps> = ({ trip, onUpdateBudget, can
         activitiesToConsider = confirmedActivities.filter(a => a.participants.includes(selectedTraveler));
     }
 
-    // FIX: Explicitly cast the initial value for `reduce` to ensure `data` has the correct type (`Record<string, number>`),
-    // which resolves an issue where `value` was not being treated as a number in the sort function.
+    // Accumulate costs by category, handling potential undefined realCost and division by zero.
     const data = activitiesToConsider.reduce((acc, activity) => {
         let cost = activity.realCost ?? 0;
         
         if (selectedTraveler) {
-            cost = cost / (activity.participants.length || 1);
+            const participantCount = activity.participants.length || 1;
+            cost = cost / participantCount;
         }
         
         acc[activity.category] = (acc[activity.category] || 0) + cost;
@@ -61,7 +61,11 @@ const FinancialView: React.FC<FinancialViewProps> = ({ trip, onUpdateBudget, can
     const spending = trip.participants.map(participant => {
         const totalSpent = confirmedActivities.reduce((sum, activity) => {
             if (activity.participants.includes(participant.name)) {
-                const share = (activity.realCost ?? 0) / (activity.participants.length || 1);
+                // FIX: The 'realCost' property on an activity can be undefined.
+                // We must provide a fallback value (e.g., 0) to ensure arithmetic operations are safe.
+                const cost = activity.realCost ?? 0;
+                const participantCount = activity.participants.length || 1;
+                const share = cost / participantCount;
                 return sum + share;
             }
             return sum;
@@ -124,19 +128,19 @@ const FinancialView: React.FC<FinancialViewProps> = ({ trip, onUpdateBudget, can
              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div className="bg-gray-800 p-4 rounded-lg">
                     <p className="text-sm text-brand-subtext">Orçamento Total</p>
-                    <p className="text-2xl font-bold">{currencySymbol} {trip.budget.toFixed(2)}</p>
+                    <p className="text-2xl font-bold">{currencySymbol} {trip.budget.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                  <div className="bg-gray-800 p-4 rounded-lg">
                     <p className="text-sm text-brand-subtext">Gasto Total</p>
-                    <p className="text-2xl font-bold text-brand-secondary">{currencySymbol} {totalSpentOverall.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-brand-secondary">{currencySymbol} {totalSpentOverall.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                  <div className="bg-gray-800 p-4 rounded-lg">
                     <p className="text-sm text-brand-subtext">Saldo Restante</p>
-                    <p className={`text-2xl font-bold ${trip.budget - totalSpentOverall < 0 ? 'text-red-400' : 'text-green-400'}`}>{currencySymbol} {(trip.budget - totalSpentOverall).toFixed(2)}</p>
+                    <p className={`text-2xl font-bold ${trip.budget - totalSpentOverall < 0 ? 'text-red-400' : 'text-green-400'}`}>{currencySymbol} {(trip.budget - totalSpentOverall).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                  <div className="bg-gray-800 p-4 rounded-lg">
                     <p className="text-sm text-brand-subtext">Média Diária Sugerida</p>
-                    <p className="text-2xl font-bold text-yellow-400">{currencySymbol} {dailySpendingRecommendation.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-yellow-400">{currencySymbol} {dailySpendingRecommendation.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
              </div>
         </div>
@@ -160,7 +164,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ trip, onUpdateBudget, can
                                                     <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
                                                     <span className="text-sm">{item.name}</span>
                                                 </div>
-                                                <span className="font-semibold text-sm">{currencySymbol} {item.value.toFixed(2)}</span>
+                                                <span className="font-semibold text-sm">{currencySymbol} {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </li>
                                         ))}
                                     </ul>
@@ -198,14 +202,14 @@ const FinancialView: React.FC<FinancialViewProps> = ({ trip, onUpdateBudget, can
                             individualSpending.map(item => (
                                 <div key={item.name} className="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
                                     <span className="font-medium">{item.name}</span>
-                                    <span className="font-bold text-brand-primary text-lg">{currencySymbol} {item.spent.toFixed(2)}</span>
+                                    <span className="font-bold text-brand-primary text-lg">{currencySymbol} {item.spent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             ))
                         ) : (
                             trip.participants.map(participant => (
                                 <div key={participant.email} className="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
                                     <span className="font-medium">{participant.name}</span>
-                                    <span className="font-bold text-brand-primary text-lg">{currencySymbol} {costPerPerson.toFixed(2)}</span>
+                                    <span className="font-bold text-brand-primary text-lg">{currencySymbol} {costPerPerson.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             ))
                         )}
@@ -239,7 +243,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ trip, onUpdateBudget, can
                             <p className="text-xs text-brand-subtext">{exp.category} - {new Date(parseInt(exp.id)).toLocaleDateString('pt-BR')}</p>
                         </div>
                         <div className="text-left sm:text-right mt-2 sm:mt-0">
-                             <p className="text-lg font-semibold text-brand-secondary">{currencySymbol} {exp.realCost?.toFixed(2)}</p>
+                             <p className="text-lg font-semibold text-brand-secondary">{currencySymbol} {exp.realCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                              <div className="flex items-center justify-start sm:justify-end text-xs text-brand-subtext" title={exp.participants.join(', ')}>
                                 <UsersIcon className="w-4 h-4 mr-1"/>
                                 <span>{exp.participants.length > 0 ? exp.participants.join(', ') : 'Nenhum participante'}</span>

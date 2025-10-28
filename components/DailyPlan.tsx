@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { Day, Activity, Category } from '../types';
+import { Day, Activity, Category, Trip } from '../types';
 import ActivityCard from './ActivityCard';
 import { PlusCircleIcon, SparklesIcon, ArrowLeftIcon } from './IconComponents';
 import { getActivitySuggestions } from '../services/geminiService';
 
 interface DailyPlanProps {
   day: Day;
+  trip: Trip;
   canEdit: boolean;
-  tripDestination: string;
-  categories: Category[];
   onAddActivity: () => void;
   onEditActivity: (activity: Activity) => void;
   deleteActivity: (dayIndex: number, activityId: string) => void;
@@ -17,16 +16,24 @@ interface DailyPlanProps {
   onBack: () => void;
 }
 
-const DailyPlan: React.FC<DailyPlanProps> = ({ day, canEdit, tripDestination, categories, onAddActivity, onEditActivity, deleteActivity, onConfirmClick, updateActivity, onBack }) => {
+const currencySymbols = {
+    BRL: 'R$',
+    USD: '$',
+    EUR: '€',
+};
+
+const DailyPlan: React.FC<DailyPlanProps> = ({ day, trip, canEdit, onAddActivity, onEditActivity, deleteActivity, onConfirmClick, updateActivity, onBack }) => {
   const [isGettingSuggestions, setIsGettingSuggestions] = useState(false);
 
+  const currencySymbol = currencySymbols[trip.currency];
   const totalEstimated = day.activities.reduce((sum, act) => sum + act.estimatedCost, 0);
   const totalConfirmed = day.activities.reduce((sum, act) => sum + (act.realCost ?? 0), 0);
   
   const handleGetSuggestions = async () => {
       setIsGettingSuggestions(true);
       try {
-          const suggestions = await getActivitySuggestions(tripDestination);
+          const allActivities = trip.days.flatMap(d => d.activities);
+          const suggestions = await getActivitySuggestions(trip.destination, trip.preferences, allActivities);
           suggestions.forEach(suggestion => {
               const activity: Activity = {
                   ...suggestion,
@@ -59,8 +66,8 @@ const DailyPlan: React.FC<DailyPlanProps> = ({ day, canEdit, tripDestination, ca
             </div>
         </div>
         <div className="mt-2 sm:mt-0 text-right">
-            <p className="text-sm text-brand-subtext">Estimado: <span className="font-semibold text-brand-text">R$ {totalEstimated.toFixed(2)}</span></p>
-            <p className="text-sm text-green-400">Confirmado: <span className="font-semibold">R$ {totalConfirmed.toFixed(2)}</span></p>
+            <p className="text-sm text-brand-subtext">Estimado: <span className="font-semibold text-brand-text">{currencySymbol} {totalEstimated.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+            <p className="text-sm text-green-400">Confirmado: <span className="font-semibold">{currencySymbol} {totalConfirmed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -68,7 +75,8 @@ const DailyPlan: React.FC<DailyPlanProps> = ({ day, canEdit, tripDestination, ca
           <ActivityCard 
             key={act.id}
             canEdit={canEdit}
-            activity={act} 
+            activity={act}
+            currencySymbol={currencySymbol}
             onDelete={() => deleteActivity(day.dayNumber - 1, act.id)}
             onConfirmClick={() => onConfirmClick(act)}
             onEdit={() => onEditActivity(act)}

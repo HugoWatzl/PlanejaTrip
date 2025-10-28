@@ -5,12 +5,13 @@ import { TrashIcon, CheckCircleIcon, UsersIcon, TagIcon, PencilIcon } from './Ic
 interface ActivityCardProps {
   activity: Activity;
   canEdit: boolean;
+  currencySymbol: string;
   onDelete: () => void;
   onConfirmClick: () => void;
   onEdit: () => void;
 }
 
-const ActivityCard: React.FC<ActivityCardProps> = ({ activity, canEdit, onDelete, onConfirmClick, onEdit }) => {
+const ActivityCard: React.FC<ActivityCardProps> = ({ activity, canEdit, currencySymbol, onDelete, onConfirmClick, onEdit }) => {
   return (
     <div className={`p-4 rounded-lg shadow-md transition-all duration-300 flex flex-col justify-between ${activity.isConfirmed ? 'bg-green-900/50 border-l-4 border-green-500' : 'bg-brand-light'}`}>
       <div>
@@ -34,11 +35,11 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, canEdit, onDelete
         <div className="flex justify-between items-end">
             <div>
                 <p className="text-xs text-brand-subtext">Estimado</p>
-                <p className="font-semibold">R$ {activity.estimatedCost.toFixed(2)}</p>
+                <p className="font-semibold">{currencySymbol} {activity.estimatedCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 {activity.isConfirmed && typeof activity.realCost === 'number' && (
                     <div className="mt-1">
                     <p className="text-xs text-green-400">Confirmado</p>
-                    <p className="font-bold text-green-400">R$ {activity.realCost.toFixed(2)}</p>
+                    <p className="font-bold text-green-400">{currencySymbol} {activity.realCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                 )}
             </div>

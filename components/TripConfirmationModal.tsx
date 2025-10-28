@@ -34,7 +34,7 @@ const TripConfirmationModal: React.FC<TripConfirmationModalProps> = ({ trip, onC
             </div>
              <div>
                 <p className="text-sm text-brand-subtext">Orçamento</p>
-                <p className="text-lg font-semibold">R$ {trip.budget.toFixed(2)}</p>
+                <p className="text-lg font-semibold">{trip.currency} {trip.budget.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
         </div>
 

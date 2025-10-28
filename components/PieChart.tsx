@@ -8,7 +8,8 @@ interface PieChartProps {
 const COLORS = ['#00A8FF', '#00E0C7', '#FACC15', '#FF7A00', '#D600FF', '#00FF4C'];
 
 const PieChart: React.FC<PieChartProps> = ({ data, size = 250 }) => {
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const validData = data.filter(item => typeof item.value === 'number' && !isNaN(item.value) && item.value > 0);
+  const total = validData.reduce((sum, item) => sum + item.value, 0);
   if (total === 0) return null;
 
   let cumulativePercent = 0;
@@ -21,7 +22,7 @@ const PieChart: React.FC<PieChartProps> = ({ data, size = 250 }) => {
 
   return (
     <svg width={size} height={size} viewBox="-1 -1 2 2" style={{ transform: 'rotate(-90deg)'}}>
-      {data.map((item, index) => {
+      {validData.map((item, index) => {
         const percent = item.value / total;
         const [startX, startY] = getCoordinatesForPercent(cumulativePercent);
         cumulativePercent += percent;
@@ -36,7 +37,7 @@ const PieChart: React.FC<PieChartProps> = ({ data, size = 250 }) => {
 
         return (
           <path key={item.name} d={pathData} fill={COLORS[index % COLORS.length]}>
-            <title>{item.name}: {item.value.toFixed(2)}</title>
+            <title>{item.name}: {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</title>
           </path>
         );
       })}

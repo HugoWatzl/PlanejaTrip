@@ -4,8 +4,7 @@ import LoginScreen from './components/LoginScreen';
 import ProfileScreen from './components/ProfileScreen';
 import TripForm from './components/TripForm';
 import TripDashboard from './components/TripDashboard';
-import { supabase } from './services/supabase';
-import { Session } from '@supabase/supabase-js';
+import ForgotPasswordModal from './components/ForgotPasswordModal';
 
 type View = 'LOGIN' | 'PROFILE' | 'TRIP_FORM' | 'TRIP_DASHBOARD';
 
@@ -17,305 +16,240 @@ interface AppState {
 
 const getInitialState = (): AppState => ({ user: null, trips: [], invites: [] });
 
-// Helper to reconstruct the Trip object from the database response
-const reconstructTrip = (dbTrip: any): Trip => {
-    return {
-        id: dbTrip.id,
-        ...dbTrip.data
-    };
+// Helper para obter dados do localStorage
+const getFromStorage = <T,>(key: string, defaultValue: T): T => {
+    try {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : defaultValue;
+    } catch (error) {
+        console.error(`Error reading from localStorage key “${key}”:`, error);
+        return defaultValue;
+    }
 };
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(getInitialState());
   const [currentView, setCurrentView] = useState<View>('LOGIN');
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await loadInitialData(session);
-      } else {
-        setAppState(getInitialState());
-        setCurrentView('LOGIN');
-      }
-      setLoading(false);
-    });
-
-    // Check for initial session on mount
-    const checkSession = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-            await loadInitialData(session);
+    // Migra o formato antigo de convites (aninhado por email) para o novo formato global
+    const oldInvitesRaw = localStorage.getItem('planejaTrip_invites');
+    if (oldInvitesRaw) {
+        try {
+            const parsedOld = JSON.parse(oldInvitesRaw);
+            const firstKey = Object.keys(parsedOld)[0];
+            if (firstKey && Array.isArray(parsedOld[firstKey])) {
+                console.log("Migrando formato de convites...");
+                const newInvites: Record<string, Invite> = {};
+                Object.values(parsedOld).forEach((inviteArray: any) => {
+                    if(Array.isArray(inviteArray)) {
+                        inviteArray.forEach((invite: Invite) => {
+                            newInvites[invite.id] = { ...invite, status: 'PENDING' };
+                        });
+                    }
+                });
+                localStorage.setItem('planejaTrip_invites', JSON.stringify(newInvites));
+            }
+        } catch(e) {
+            console.error("Falha ao migrar convites, pode já estar no novo formato.", e);
         }
-        setLoading(false);
-    };
-    checkSession();
+    }
 
-    return () => subscription.unsubscribe();
+    const lastUserEmail = localStorage.getItem('planejaTrip_lastUser');
+    if (lastUserEmail) {
+      const users = getFromStorage<Record<string, User>>('planejaTrip_users', {});
+      const user = users[lastUserEmail];
+      if (user) {
+        loadUserData(user);
+        setCurrentView('PROFILE');
+      }
+    }
   }, []);
 
-  const loadInitialData = async (session: Session) => {
-      const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-      if (profile) {
-          await loadUserData(profile);
-          setCurrentView('PROFILE');
-      } else if (error) {
-          console.error("Error fetching profile:", error.message);
-      }
-  };
-
-  const loadUserData = async (user: User) => {
-    const { data: tripsData, error: tripsError } = await supabase.from('trips').select('*');
-    const { data: invitesData, error: invitesError } = await supabase.from('invites').select('*').or(`guest_email.eq.${user.email},and(status.eq.REJECTED,host_email.eq.${user.email})`);
-
-    if(tripsError) console.error("Error fetching trips:", tripsError.message);
-    if(invitesError) console.error("Error fetching invites:", invitesError.message);
+  const loadUserData = (user: User) => {
+    const allTrips = getFromStorage<Record<string, Trip>>('planejaTrip_trips', {});
+    const allInvites = getFromStorage<Record<string, Invite>>('planejaTrip_invites', {});
     
-    const userTrips = tripsData ? tripsData.map(reconstructTrip) : [];
-    const userInvites = invitesData || [];
+    const userTrips = Object.values(allTrips)
+      .filter(trip => trip.participants.some(p => p.email === user.email))
+      .map(trip => ({
+        ...trip,
+        preferences: trip.preferences || { likes: [], dislikes: [], budgetStyle: 'confortavel' }
+      }));
+    
+    const userInvites = Object.values(allInvites).filter(inv => 
+      (inv.guestEmail === user.email && inv.status === 'PENDING') ||
+      (inv.hostEmail === user.email && inv.status === 'REJECTED')
+    );
 
     setAppState({ user, trips: userTrips, invites: userInvites });
   };
   
-  const handleLogin = async (email: string, password: string): Promise<void> => {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-          throw error;
+  const handleLogin = (email: string, password: string): string | null => {
+      const users = getFromStorage<Record<string, User>>('planejaTrip_users', {});
+      const existingUser = users[email];
+
+      if (!existingUser) {
+          return "Nenhum usuário encontrado com este e-mail. Por favor, cadastre-se.";
       }
-      // onAuthStateChange will handle successful login
+      if (existingUser.password !== password) {
+          return "Senha incorreta.";
+      }
+      
+      localStorage.setItem('planejaTrip_lastUser', email);
+      loadUserData(existingUser);
+      setCurrentView('PROFILE');
+      return null;
   };
 
-  const handleSignUp = async (name: string, email: string, password: string): Promise<void> => {
-      const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-              data: { name } // This will be used by the database trigger
-          }
-      });
-      if (error) {
-          throw error;
+  const handleRegister = (name: string, email: string, password: string): string | null => {
+      const users = getFromStorage<Record<string, User>>('planejaTrip_users', {});
+      if (users[email]) {
+          return "Este e-mail já está cadastrado. Por favor, faça login.";
       }
-      // onAuthStateChange will handle successful signup
+      if (!name.trim()) {
+          return "O nome é obrigatório para o cadastro.";
+      }
+
+      const newUser: User = { id: email, name, email, password };
+      users[email] = newUser;
+      localStorage.setItem('planejaTrip_users', JSON.stringify(users));
+      localStorage.setItem('planejaTrip_lastUser', email);
+      loadUserData(newUser);
+      setCurrentView('PROFILE');
+      return null;
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    localStorage.removeItem('planejaTrip_lastUser');
     setAppState(getInitialState());
     setCurrentView('LOGIN');
   };
+  
+  const handlePasswordReset = (email: string, newPassword: string):string | null => {
+      const users = getFromStorage<Record<string, User>>('planejaTrip_users', {});
+      if(!users[email]){
+          return "Email não encontrado.";
+      }
+      users[email].password = newPassword;
+      localStorage.setItem('planejaTrip_users', JSON.stringify(users));
+      return null;
+  }
 
-  const handleUpdateUser = async (updatedUser: User, passwordData?: { currentPassword: string; newPassword: string }): Promise<string | null> => {
-    if (!appState.user) return "Usuário não autenticado.";
-  
-    // Update password if provided
-    if (passwordData && passwordData.newPassword && passwordData.currentPassword) {
-      // To verify the current password, we try to sign in with it.
-      // This will issue a new session token but won't disrupt the UX if successful.
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: appState.user.email,
-        password: passwordData.currentPassword,
-      });
-  
-      if (signInError) {
-        return "A senha atual está incorreta.";
-      }
-  
-      // If password is correct, update to the new one.
-      const { error: updateError } = await supabase.auth.updateUser({ password: passwordData.newPassword });
-      if (updateError) {
-        console.error("Error updating password:", updateError.message);
-        return `Erro ao atualizar a senha: ${updateError.message}`;
-      }
-    }
-  
-    // Update profile name if it has changed
-    if (updatedUser.name !== appState.user.name) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ name: updatedUser.name })
-        .eq('id', updatedUser.id)
-        .select()
-        .single();
-  
-      if (error) {
-        console.error("Error updating user name:", error.message);
-        return `Erro ao atualizar o nome: ${error.message}`;
-      }
-      if (data) {
-        setAppState(prev => ({ ...prev, user: data }));
-      }
-    }
-  
-    return null; // Success
+  const handleUpdateUser = (updatedUser: User) => {
+    if (!appState.user) return;
+    const users = getFromStorage<Record<string, User>>('planejaTrip_users', {});
+    users[appState.user.email] = { ...users[appState.user.email], ...updatedUser };
+    localStorage.setItem('planejaTrip_users', JSON.stringify(users));
+    setAppState(prev => ({ ...prev, user: updatedUser }));
   };
   
-  const handleSaveTrip = async (trip: Trip) => {
-    if (!appState.user) return;
-    
-    const { id, ...tripData } = trip;
+  const handleSaveTrip = (trip: Trip) => {
+    const allTrips = getFromStorage<Record<string, Trip>>('planejaTrip_trips', {});
+    allTrips[trip.id] = trip;
+    localStorage.setItem('planejaTrip_trips', JSON.stringify(allTrips));
 
-    const { data: newTripDb, error: tripError } = await supabase
-        .from('trips')
-        .insert({ owner_id: appState.user.id, data: tripData })
-        .select()
-        .single();
-    
-    if (tripError || !newTripDb) {
-      console.error("Error creating trip:", tripError?.message);
-      return;
-    }
-
-    const { error: participantError } = await supabase
-        .from('trip_participants')
-        .insert({ trip_id: newTripDb.id, user_id: appState.user.id, permission: 'EDIT' });
-    
-    if (participantError) {
-        console.error("Error adding owner as participant:", participantError.message);
-        // Consider rolling back the trip creation
-        return;
-    }
-    
-    const newTrip = reconstructTrip(newTripDb);
-    setAppState(prev => ({ ...prev, trips: [...prev.trips, newTrip]}));
-    setSelectedTripId(newTrip.id);
+    setAppState(prev => ({ ...prev, trips: [...prev.trips, trip]}));
+    setSelectedTripId(trip.id);
     setCurrentView('TRIP_DASHBOARD');
   };
 
-  const handleUpdateTrip = async (updatedTrip: Trip) => {
-      const { id, ...tripData } = updatedTrip;
-      const { data, error } = await supabase
-          .from('trips')
-          .update({ data: tripData })
-          .eq('id', id)
-          .select()
-          .single();
-
-      if (error) {
-          console.error("Error updating trip:", error.message);
-          return;
-      }
-      if (data) {
-          const newTrip = reconstructTrip(data);
-          setAppState(prev => ({ ...prev, trips: prev.trips.map(t => t.id === newTrip.id ? newTrip : t) }));
-      }
+  const handleUpdateTrip = (updatedTrip: Trip) => {
+    const allTrips = getFromStorage<Record<string, Trip>>('planejaTrip_trips', {});
+    allTrips[updatedTrip.id] = updatedTrip;
+    localStorage.setItem('planejaTrip_trips', JSON.stringify(allTrips));
+    
+    // Se o usuário atual foi removido da viagem, atualize sua lista de viagens
+    if (appState.user && !updatedTrip.participants.some(p => p.email === appState.user!.email)) {
+        setAppState(prev => ({ ...prev, trips: prev.trips.filter(t => t.id !== updatedTrip.id) }));
+        navigateToProfile();
+    } else {
+        setAppState(prev => ({ ...prev, trips: prev.trips.map(t => t.id === updatedTrip.id ? updatedTrip : t) }));
+    }
   };
 
-  const handleConcludeTrip = async (tripId: string) => {
-    const tripToUpdate = appState.trips.find(t => t.id === tripId);
-    if (!tripToUpdate) return;
-    
-    const updatedTripData = { ...tripToUpdate, isCompleted: true };
-    const { id, ...dataToSave } = updatedTripData;
-
-    const { error } = await supabase
-        .from('trips')
-        .update({ data: dataToSave })
-        .eq('id', tripId);
-    
-    if (!error) {
-      setAppState(prev => ({...prev, trips: prev.trips.map(t => t.id === tripId ? updatedTripData : t)}));
-    } else {
-        console.error("Error concluding trip:", error.message);
+  const handleConcludeTrip = (tripId: string) => {
+    const allTrips = getFromStorage<Record<string, Trip>>('planejaTrip_trips', {});
+    if (allTrips[tripId]) {
+      allTrips[tripId].isCompleted = true;
+      localStorage.setItem('planejaTrip_trips', JSON.stringify(allTrips));
+      setAppState(prev => ({...prev, trips: prev.trips.map(t => t.id === tripId ? {...t, isCompleted: true} : t)}));
     }
   };
   
-  const handleInvite = async (trip: Trip, guestEmail: string, permission: 'EDIT' | 'VIEW_ONLY'): Promise<string | null> => {
+  const handleInvite = (trip: Trip, guestEmail: string, permission: 'EDIT' | 'VIEW_ONLY'): string | null => {
       if (!appState.user) return "Usuário não logado.";
-
-      const { data: guestProfile } = await supabase.from('profiles').select('id').eq('email', guestEmail).single();
-      if (!guestProfile) return "Nenhuma conta encontrada com este e-mail.";
+      const users = getFromStorage<Record<string, User>>('planejaTrip_users', {});
+      if (!users[guestEmail]) return "Nenhuma conta encontrada com este e-mail.";
       if (trip.participants.some(p => p.email === guestEmail)) return "Este usuário já participa da viagem.";
       
-      const { error } = await supabase.from('invites').insert({
-          trip_id: trip.id,
-          tripName: trip.name,
-          host_email: appState.user.email,
-          hostName: appState.user.name,
-          guest_email: guestEmail,
-          permission: permission
-      });
-      
-      if (error) {
-          if (error.code === '23505') return "Um convite para esta viagem já foi enviado a este usuário.";
-          console.error("Error sending invite:", error);
-          return error.message;
-      }
+      const allInvites = getFromStorage<Record<string, Invite>>('planejaTrip_invites', {});
+      const existingInvite = Object.values(allInvites).find(inv => inv.tripId === trip.id && inv.guestEmail === guestEmail);
+      if (existingInvite) return "Um convite para esta viagem já foi enviado a este usuário.";
 
+      const newInvite: Invite = {
+          id: Date.now().toString(),
+          tripId: trip.id,
+          tripName: trip.name,
+          hostEmail: appState.user.email,
+          hostName: appState.user.name,
+          guestEmail: guestEmail,
+          permission: permission,
+          status: 'PENDING'
+      };
+      allInvites[newInvite.id] = newInvite;
+      localStorage.setItem('planejaTrip_invites', JSON.stringify(allInvites));
       return null; // Success
   };
   
-  const handleAcceptInvite = async (invite: Invite) => {
+  const handleAcceptInvite = (invite: Invite) => {
     if (!appState.user) return;
-    
-    const newParticipant: Participant = {
-        name: appState.user.name,
-        email: appState.user.email,
-        permission: invite.permission
-    };
-    
-    // 1. Fetch the trip to update its participant list
-    const { data: tripDb, error: fetchError } = await supabase.from('trips').select('*').eq('id', invite.tripId).single();
-    if (fetchError || !tripDb) {
-        console.error("Trip not found for invite:", fetchError?.message);
-        return;
+    const allTrips = getFromStorage<Record<string, Trip>>('planejaTrip_trips', {});
+    const trip = allTrips[invite.tripId];
+    if (trip) {
+        const newParticipant: Participant = {
+            name: appState.user.name,
+            email: appState.user.email,
+            permission: invite.permission
+        };
+        trip.participants.push(newParticipant);
+        localStorage.setItem('planejaTrip_trips', JSON.stringify(allTrips));
+        setAppState(prev => ({ ...prev, trips: [...prev.trips, trip] }));
     }
-    const trip = reconstructTrip(tripDb);
-    trip.participants.push(newParticipant);
-
-    // 2. Add to trip_participants table
-    const { error: participantError } = await supabase.from('trip_participants').insert({
-        trip_id: invite.tripId,
-        user_id: appState.user.id,
-        permission: invite.permission
-    });
-    if (participantError) {
-        console.error("Error adding participant:", participantError.message);
-        return;
-    }
-
-    // 3. Update the trip's data jsonb
-    const { id, ...tripData } = trip;
-    await supabase.from('trips').update({ data: tripData }).eq('id', invite.tripId);
-    
-    // 4. Delete the invite
-    await supabase.from('invites').delete().eq('id', invite.id);
-
-    // 5. Update local state
-    setAppState(prev => ({
-        ...prev,
-        trips: [...prev.trips, trip],
-        invites: prev.invites.filter(i => i.id !== invite.id)
-    }));
+    // Remove invite after processing
+    const allInvites = getFromStorage<Record<string, Invite>>('planejaTrip_invites', {});
+    delete allInvites[invite.id];
+    localStorage.setItem('planejaTrip_invites', JSON.stringify(allInvites));
+    setAppState(prev => ({ ...prev, invites: prev.invites.filter(i => i.id !== invite.id) }));
   };
 
-  const handleDeclineInvite = async (invite: Invite) => {
-    const { error } = await supabase.from('invites').update({ status: 'REJECTED' }).eq('id', invite.id);
-    if (!error) {
-        setAppState(prev => ({ ...prev, invites: prev.invites.filter(i => i.id !== invite.id) }));
+  const handleDeclineInvite = (invite: Invite) => {
+    if (!appState.user) return;
+    const allInvites = getFromStorage<Record<string, Invite>>('planejaTrip_invites', {});
+    if(allInvites[invite.id]) {
+      allInvites[invite.id].status = 'REJECTED';
+      localStorage.setItem('planejaTrip_invites', JSON.stringify(allInvites));
+      setAppState(prev => ({ ...prev, invites: prev.invites.filter(i => i.id !== invite.id) }));
     }
   };
 
-  const handleResendInvite = async (inviteId: string) => {
-    const { error } = await supabase.from('invites').update({ status: 'PENDING' }).eq('id', inviteId);
-    if (!error) {
+  const handleResendInvite = (inviteId: string) => {
+    const allInvites = getFromStorage<Record<string, Invite>>('planejaTrip_invites', {});
+    if (allInvites[inviteId]) {
+        allInvites[inviteId].status = 'PENDING';
+        localStorage.setItem('planejaTrip_invites', JSON.stringify(allInvites));
         setAppState(prev => ({ ...prev, invites: prev.invites.filter(i => i.id !== inviteId) }));
     }
   };
 
-  const handleDismissRejection = async (inviteId: string) => {
-    const { error } = await supabase.from('invites').delete().eq('id', inviteId);
-    if (!error) {
-        setAppState(prev => ({ ...prev, invites: prev.invites.filter(i => i.id !== inviteId) }));
-    }
+  const handleDismissRejection = (inviteId: string) => {
+      const allInvites = getFromStorage<Record<string, Invite>>('planejaTrip_invites', {});
+      delete allInvites[inviteId];
+      localStorage.setItem('planejaTrip_invites', JSON.stringify(allInvites));
+      setAppState(prev => ({ ...prev, invites: prev.invites.filter(i => i.id !== inviteId) }));
   };
-
 
   const handleSelectTrip = (trip: Trip) => {
     setSelectedTripId(trip.id);
@@ -329,37 +263,38 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-brand-dark">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-brand-primary"></div>
-            </div>
-        );
-    }
-
     switch (currentView) {
       case 'LOGIN':
-        return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUp} />;
+        return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} />;
       case 'PROFILE':
-        if (!appState.user) return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUp} />;
+        if (!appState.user) return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} />;
         return <ProfileScreen user={appState.user} trips={appState.trips} invites={appState.invites} onLogout={handleLogout} onNewTrip={() => setCurrentView('TRIP_FORM')} onSelectTrip={handleSelectTrip} onUpdateUser={handleUpdateUser} onConcludeTrip={handleConcludeTrip} onAcceptInvite={handleAcceptInvite} onDeclineInvite={handleDeclineInvite} onResendInvite={handleResendInvite} onDismissRejection={handleDismissRejection} />;
       case 'TRIP_FORM':
-        if (!appState.user) return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUp} />;
+        if (!appState.user) return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} />;
         return <TripForm user={appState.user} onSave={handleSaveTrip} onCancel={() => setCurrentView('PROFILE')} />;
       case 'TRIP_DASHBOARD':
         const selectedTrip = appState.trips.find(t => t.id === selectedTripId);
-        if (!selectedTrip || !appState.user) {
+        if (!selectedTrip || !appState.user) { // Removed isCompleted check to allow viewing completed trips
             navigateToProfile();
             return null;
         }
-// FIX: The 'onInvite' prop now correctly matches the async 'handleInvite' function signature.
         return <TripDashboard user={appState.user} trip={selectedTrip} updateTrip={handleUpdateTrip} onBackToProfile={navigateToProfile} onInvite={handleInvite} />;
       default:
-        return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUp} />;
+        return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} />;
     }
   };
 
-  return <>{renderContent()}</>;
+  return (
+    <>
+        {renderContent()}
+        {isForgotPasswordOpen && (
+            <ForgotPasswordModal 
+                onClose={() => setIsForgotPasswordOpen(false)}
+                onPasswordReset={handlePasswordReset}
+            />
+        )}
+    </>
+  );
 };
 
 export default App;

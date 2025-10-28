@@ -24,12 +24,12 @@ const TripForm: React.FC<TripFormProps> = ({ user, onSave, onCancel }) => {
     startDate: '',
     endDate: '',
     budget: '',
-    description: ''
+    currency: 'BRL' as Currency,
   });
   const [tripToConfirm, setTripToConfirm] = useState<Trip | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setTripData(prev => ({ ...prev, [name]: value }));
   };
@@ -38,8 +38,8 @@ const TripForm: React.FC<TripFormProps> = ({ user, onSave, onCancel }) => {
     e.preventDefault();
     setError(null);
 
-    if (!tripData.startDate || !tripData.endDate) {
-      setError("Por favor, preencha as datas de início e término.");
+    if (!tripData.startDate || !tripData.endDate || !tripData.destination) {
+      setError("Por favor, preencha o destino e as datas de início e término.");
       return;
     }
 
@@ -70,18 +70,22 @@ const TripForm: React.FC<TripFormProps> = ({ user, onSave, onCancel }) => {
 
     const newTrip: Trip = {
       id: Date.now().toString(),
-      name: tripData.name,
+      name: tripData.name.trim() || tripData.destination.trim(),
       destination: tripData.destination,
       startDate: tripData.startDate,
       endDate: tripData.endDate,
       budget: parseFloat(tripData.budget) || 0,
-      description: tripData.description,
       days,
       participants: [{ name: user.name, email: user.email, permission: 'EDIT' }],
       categories: defaultCategories,
-      currency: 'BRL',
+      currency: tripData.currency,
       isCompleted: false,
       ownerEmail: user.email,
+      preferences: {
+        likes: [],
+        dislikes: [],
+        budgetStyle: 'confortavel',
+      },
     };
     setTripToConfirm(newTrip);
   };
@@ -102,11 +106,11 @@ const TripForm: React.FC<TripFormProps> = ({ user, onSave, onCancel }) => {
         <h2 className="text-3xl font-bold mb-8 text-center">Planeje sua Próxima Aventura</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-brand-subtext">Nome da Viagem</label>
-            <input type="text" name="name" id="name" required value={tripData.name} onChange={handleChange} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary p-3" placeholder="Ex: Eurotrip com os Amigos" />
+            <label htmlFor="name" className="block text-sm font-medium text-brand-subtext">Nome da Viagem (Opcional)</label>
+            <input type="text" name="name" id="name" value={tripData.name} onChange={handleChange} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary p-3" placeholder="Ex: Eurotrip com os Amigos" />
           </div>
           <div>
-            <label htmlFor="destination" className="block text-sm font-medium text-brand-subtext">Destino Principal</label>
+            <label htmlFor="destination" className="block text-sm font-medium text-brand-subtext">Nome Completo do Destino Principal</label>
             <div className="mt-1 relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MapPinIcon className="h-5 w-5 text-gray-400" />
@@ -124,13 +128,16 @@ const TripForm: React.FC<TripFormProps> = ({ user, onSave, onCancel }) => {
               <input type="date" name="endDate" id="endDate" required value={tripData.endDate} onChange={handleChange} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary p-3" />
             </div>
           </div>
-          <div>
-            <label htmlFor="budget" className="block text-sm font-medium text-brand-subtext">Orçamento Total (R$)</label>
-            <input type="number" name="budget" id="budget" required value={tripData.budget} onChange={handleChange} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary p-3" placeholder="Ex: 5000" />
-          </div>
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-brand-subtext">Descrição (Opcional)</label>
-            <textarea name="description" id="description" value={tripData.description} onChange={handleChange} rows={3} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary p-3" placeholder="Detalhes sobre a viagem..."></textarea>
+           <div>
+            <label htmlFor="budget" className="block text-sm font-medium text-brand-subtext">Orçamento Total</label>
+             <div className="flex gap-4 mt-1">
+                <input type="number" name="budget" id="budget" required value={tripData.budget} onChange={handleChange} className="block w-2/3 bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary p-3" placeholder="Ex: 5000" />
+                <select name="currency" id="currency" value={tripData.currency} onChange={handleChange} className="block w-1/3 bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary p-3">
+                    <option value="BRL">BRL</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                </select>
+            </div>
           </div>
           {error && <p className="text-red-400 text-sm text-center bg-red-900/30 p-3 rounded-lg border border-red-500/50">{error}</p>}
           <div className="flex justify-end space-x-4 pt-4">

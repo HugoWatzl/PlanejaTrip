@@ -37,6 +37,12 @@ export interface Participant {
   permission: 'EDIT' | 'VIEW_ONLY';
 }
 
+export interface TripPreferences {
+  likes: string[];
+  dislikes: string[];
+  budgetStyle: 'economico' | 'confortavel' | 'luxo' | 'exclusivo';
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -51,6 +57,7 @@ export interface Trip {
   currency: Currency;
   isCompleted: boolean;
   ownerEmail: string;
+  preferences: TripPreferences;
 }
 
 export interface Invite {
