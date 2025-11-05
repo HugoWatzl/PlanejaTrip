@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import Logo from './Logo';
 import PasswordInput from './PasswordInput';
+import { GoogleIcon } from './IconComponents';
 
 interface LoginScreenProps {
   onLogin: (email: string, password: string) => string | null;
   onRegister: (name: string, email: string, password: string) => string | null;
   onForgotPassword: () => void;
+  onGoogleLogin: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, onForgotPassword }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, onForgotPassword, onGoogleLogin }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -45,20 +47,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, onForgot
     <div className="min-h-screen flex items-center justify-center p-4 bg-brand-dark">
       <div className="max-w-md w-full bg-brand-light rounded-2xl shadow-2xl p-8 space-y-6">
         <Logo />
-        <div className="flex border-b border-gray-700">
-          <button
-            onClick={() => { setMode('login'); setError(''); }}
-            className={`w-1/2 py-3 text-lg font-semibold transition ${mode === 'login' ? 'border-b-2 border-brand-primary text-brand-text' : 'text-brand-subtext'}`}
-          >
-            Entrar
-          </button>
-          <button
-            onClick={() => { setMode('register'); setError(''); }}
-            className={`w-1/2 py-3 text-lg font-semibold transition ${mode === 'register' ? 'border-b-2 border-brand-primary text-brand-text' : 'text-brand-subtext'}`}
-          >
-            Cadastrar-se
-          </button>
-        </div>
+        <h2 className="text-center text-2xl font-bold text-brand-text pt-2">
+          {mode === 'login' ? 'Faça seu Login' : 'Crie sua Conta'}
+        </h2>
         <div>
           <form className="space-y-4" onSubmit={handleSubmit}>
             {mode === 'register' && (
@@ -134,6 +125,43 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, onForgot
               </button>
             </div>
           </form>
+          <div className="relative flex py-4 items-center">
+            <div className="flex-grow border-t border-gray-600"></div>
+            <span className="flex-shrink mx-4 text-brand-subtext text-xs">OU</span>
+            <div className="flex-grow border-t border-gray-600"></div>
+          </div>
+          <button
+            type="button"
+            onClick={onGoogleLogin}
+            className="group relative w-full flex justify-center items-center py-3 px-4 border border-gray-600 text-sm font-semibold rounded-lg text-brand-text bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-dark focus:ring-brand-primary transition-colors"
+          >
+            <GoogleIcon className="w-5 h-5 mr-3" />
+            Entrar com o Google
+          </button>
+          
+          <div className="text-center text-sm pt-4">
+            {mode === 'login' ? (
+                <>
+                    <span className="text-brand-subtext">Não tem uma conta? </span>
+                    <button
+                        onClick={() => { setMode('register'); setError(''); }}
+                        className="font-medium text-brand-primary hover:underline"
+                    >
+                        Cadastre-se
+                    </button>
+                </>
+            ) : (
+                <>
+                    <span className="text-brand-subtext">Já tem uma conta? </span>
+                    <button
+                        onClick={() => { setMode('login'); setError(''); }}
+                        className="font-medium text-brand-primary hover:underline"
+                    >
+                        Faça login
+                    </button>
+                </>
+            )}
+          </div>
         </div>
       </div>
     </div>

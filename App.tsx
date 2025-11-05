@@ -104,6 +104,54 @@ const App: React.FC = () => {
       return null;
   };
 
+  const handleGoogleLogin = (): void => {
+      const email = window.prompt("Para continuar, por favor, insira seu e-mail do Google:");
+      if (!email || !email.trim()) {
+        return; // User cancelled or entered empty string
+      }
+      
+      // Basic email validation
+      if (!email.includes('@') || !email.includes('.')) {
+        alert("Por favor, insira um e-mail válido.");
+        return;
+      }
+
+      const users = getFromStorage<Record<string, User>>('planejaTrip_users', {});
+      let user = users[email];
+
+      if (!user) {
+        // New user, register them
+        const name = window.prompt("Bem-vindo(a)! Como podemos te chamar?");
+        if (!name || !name.trim()) {
+          alert("O nome é necessário para o cadastro.");
+          return;
+        }
+        
+        user = {
+          id: email,
+          name: name.trim(),
+          email: email,
+          password: 'GOOGLE_SIGNED_IN' // Special value to indicate Google Auth
+        };
+        
+        users[email] = user;
+        localStorage.setItem('planejaTrip_users', JSON.stringify(users));
+      } else if (user.password !== 'GOOGLE_SIGNED_IN') {
+          // It's a regular account. For this simulation, we'll ask for their password
+          // to "link" the account. A real app would have a more complex flow.
+          const password = window.prompt(`Encontramos uma conta para ${email}. Por favor, insira sua senha do PlanejaTrip para entrar.`);
+          if(password !== user.password) {
+              alert('Senha incorreta. Não foi possível entrar.');
+              return;
+          }
+      }
+      
+      // Log the user in
+      localStorage.setItem('planejaTrip_lastUser', email);
+      loadUserData(user);
+      setCurrentView('PROFILE');
+    };
+
   const handleRegister = (name: string, email: string, password: string): string | null => {
       const users = getFromStorage<Record<string, User>>('planejaTrip_users', {});
       if (users[email]) {
@@ -265,12 +313,12 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'LOGIN':
-        return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} />;
+        return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} onGoogleLogin={handleGoogleLogin} />;
       case 'PROFILE':
-        if (!appState.user) return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} />;
+        if (!appState.user) return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} onGoogleLogin={handleGoogleLogin} />;
         return <ProfileScreen user={appState.user} trips={appState.trips} invites={appState.invites} onLogout={handleLogout} onNewTrip={() => setCurrentView('TRIP_FORM')} onSelectTrip={handleSelectTrip} onUpdateUser={handleUpdateUser} onConcludeTrip={handleConcludeTrip} onAcceptInvite={handleAcceptInvite} onDeclineInvite={handleDeclineInvite} onResendInvite={handleResendInvite} onDismissRejection={handleDismissRejection} />;
       case 'TRIP_FORM':
-        if (!appState.user) return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} />;
+        if (!appState.user) return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} onGoogleLogin={handleGoogleLogin} />;
         return <TripForm user={appState.user} onSave={handleSaveTrip} onCancel={() => setCurrentView('PROFILE')} />;
       case 'TRIP_DASHBOARD':
         const selectedTrip = appState.trips.find(t => t.id === selectedTripId);
@@ -280,7 +328,7 @@ const App: React.FC = () => {
         }
         return <TripDashboard user={appState.user} trip={selectedTrip} updateTrip={handleUpdateTrip} onBackToProfile={navigateToProfile} onInvite={handleInvite} />;
       default:
-        return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} />;
+        return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => setIsForgotPasswordOpen(true)} onGoogleLogin={handleGoogleLogin} />;
     }
   };
 
